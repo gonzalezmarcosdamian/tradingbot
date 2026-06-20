@@ -19,7 +19,9 @@ diario) se mantiene en memoria entre iteraciones; un reinicio del proceso lo
 resetea. Aceptable para paper trading; persistirlo es trabajo de la etapa 5.
 """
 
+import os
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
@@ -266,13 +268,51 @@ def run_once(
     return RunResult(Action.HOLD, "sin cambios")
 
 
+# ── Loop continuo ──────────────────────────────────────────────────
+
+def run_forever(
+    deps: BotDeps,
+    config: BotConfig,
+    risk_state: RiskState,
+    risk_config: RiskConfig,
+    *,
+    sleep_seconds: float,
+    iterations: Optional[int] = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    today_fn: Callable[[], date] = date.today,
+) -> int:
+    """Corre run_once() en bucle, durmiendo entre iteraciones.
+
+    Robusto a fallos: una excepción en una iteración se registra y alerta, pero
+    NO tumba el proceso (la próxima vela puede salir bien; si es algo grave, el
+    propio run_once ya habrá hecho halt). `iterations` acota el bucle en tests;
+    sleep_fn/today_fn se inyectan para testear sin dormir ni depender del reloj.
+
+    Devuelve la cantidad de iteraciones ejecutadas.
+    """
+    count = 0
+    while iterations is None or count < iterations:
+        try:
+            result = run_once(deps, config, risk_state, risk_config, today_fn())
+            deps.journal.log(EventType.INFO, f"iteración: {result.action.value}",
+                             {"detail": result.detail})
+        except Exception as e:  # red/exchange inestable: seguir vivo, alertar
+            deps.journal.log(EventType.ERROR, f"error en iteración: {e}")
+            deps.notifier.error("loop", str(e))
+        count += 1
+        if iterations is not None and count >= iterations:
+            break
+        sleep_fn(sleep_seconds)
+    return count
+
+
 # ── Wiring real para paper trading en testnet ──────────────────────
 
 def main():
     """Arranca el bot en modo paper trading (testnet). Mainnet sigue bloqueado
-    por el guard de config.py hasta completar y validar la etapa 4."""
+    por el guard de config.py: este entrypoint NO opera con dinero real."""
     from config import Config
-    from exchange import build_exchange
+    from exchange import build_exchange, CCXTExchange
     from strategy import STRATEGIES
 
     Config.validate()
@@ -280,15 +320,37 @@ def main():
         print("Mainnet bloqueado. Poné USE_TESTNET=true.", file=sys.stderr)
         sys.exit(1)
 
-    print("⚠️  Paper trading en TESTNET. El cruce de medias NO mostró edge en "
-          "el backtest: esto es validación de infraestructura, no una estrategia "
-          "rentable. Ver NEXT_STEPS.md.")
-    # El cableado completo del adaptador CCXT (create_order/fetch_order/filters
-    # sobre testnet) se valida en la etapa 3. Acá queda el punto de entrada.
-    raise NotImplementedError(
-        "Wiring CCXT→testnet pendiente (etapa 3). run_once() ya está probado "
-        "con fakes; falta el adaptador real sobre Binance testnet."
+    print("⚠️  Paper trading en TESTNET (plata falsa). El cruce de medias NO "
+          "mostró edge: esto valida la infraestructura, no es una estrategia "
+          "rentable. Ver NEXT_STEPS.md.", flush=True)
+
+    strat_name = os.getenv("STRATEGY", "SMA")
+    signal_fn = STRATEGIES.get(strat_name, STRATEGIES["SMA"])
+    client = build_exchange(Config)
+    exchange = CCXTExchange(client, Config.SYMBOL)
+
+    deps = BotDeps(
+        exchange=exchange,
+        signal_fn=signal_fn,
+        store=StateStore(),
+        journal=Journal(),
+        notifier=Notifier.from_env(),
     )
+    config = BotConfig(
+        symbol=Config.SYMBOL,
+        timeframe=Config.TIMEFRAME,
+        fast=int(os.getenv("FAST", "20")),
+        slow=int(os.getenv("SLOW", "50")),
+    )
+    # Una iteración por vela: dormimos lo que dura el timeframe.
+    interval = client.parse_timeframe(Config.TIMEFRAME)
+
+    deps.journal.log(EventType.INFO,
+                     f"bot iniciado (testnet) {config.symbol} {config.timeframe} "
+                     f"{strat_name} fast={config.fast} slow={config.slow}")
+    deps.notifier.send(f"🤖 Bot iniciado en testnet — {config.symbol} {config.timeframe} "
+                       f"({strat_name}). Paper trading.")
+    run_forever(deps, config, RiskState(), RiskConfig(), sleep_seconds=interval)
 
 
 if __name__ == "__main__":

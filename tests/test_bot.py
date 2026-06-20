@@ -7,7 +7,7 @@ que la señal de salida cierre, y que un resultado incierto fuerce halt.
 """
 
 import killswitch
-from bot import BotConfig, BotDeps, Action, run_once
+from bot import BotConfig, BotDeps, Action, run_once, run_forever
 from journal import Journal
 from notifier import Notifier
 from risk import RiskConfig, RiskState
@@ -146,3 +146,31 @@ def test_pocas_velas_no_opera(tmp_path, monkeypatch):
     deps, _ = make_deps(ex, tmp_path, monkeypatch)
     res = run(deps)
     assert res.action == Action.NO_DATA
+
+
+# ── Loop continuo (run_forever) ────────────────────────────────────
+
+def test_run_forever_corre_n_iteraciones_sin_dormir_al_final(tmp_path, monkeypatch):
+    ex = FakeExchange(rising_rows(), base=0.0, quote=10000.0)
+    deps, _ = make_deps(ex, tmp_path, monkeypatch)
+    sleeps = []
+    n = run_forever(deps, CONFIG, RiskState(), RiskConfig(),
+                    sleep_seconds=3600, iterations=3,
+                    sleep_fn=lambda s: sleeps.append(s))
+    assert n == 3
+    assert sleeps == [3600, 3600]  # duerme entre iteraciones, no tras la última
+
+
+class ExplodingExchange(FakeExchange):
+    """fetch_ohlcv revienta: el loop debe sobrevivir y alertar, no morir."""
+    def fetch_ohlcv(self, symbol, timeframe, limit):
+        raise RuntimeError("exchange caído")
+
+
+def test_run_forever_sobrevive_a_excepciones(tmp_path, monkeypatch):
+    ex = ExplodingExchange(rising_rows())
+    deps, _ = make_deps(ex, tmp_path, monkeypatch)
+    # No debe propagar la excepción: completa las 2 iteraciones igual.
+    n = run_forever(deps, CONFIG, RiskState(), RiskConfig(),
+                    sleep_seconds=0, iterations=2, sleep_fn=lambda s: None)
+    assert n == 2
