@@ -86,18 +86,41 @@ muestra el mismo patrón antes de invertir más en el sistema.
 - `test_strategy_filters.py` [7 tests]
 - Docs: ARCHITECTURE.md, CLAUDE.md, LEARNING.md
 
-### Pendiente (capa de seguridad y operación)
-- `killswitch.py` — panic-close (cerrar todo y detener el bot)
-- `notifier.py` — alertas Telegram (y luego email)
-- `bot.py` — loop principal que orquesta: data → señal → riesgo → orden →
-  estado → journal → alerta
+### Hecho (capa de seguridad — agregado jun-2026)
+- `killswitch.py` — panic-close + halt flag persistente [6 tests]
+- `notifier.py` — alertas Telegram (degrada con gracia, envío inyectable) [12 tests]
+- `bot.py` — loop principal `run_once()`: killswitch → reconciliar → señal →
+  riesgo → orden → estado → journal → alerta. Probado entero con fakes [7 tests]
+
+### Pendiente
+- **Adaptador CCXT→testnet** para `bot.main()` (etapa 3, paper trading). El
+  `run_once()` ya está probado con fakes; falta el cliente real sobre
+  testnet.binance.vision (create_order/fetch_order/market_filters/balances).
 - `evaluator.py` / `proposer.py` — motor de aprendizaje (necesitan datos de
   operación real para tener algo que evaluar)
 - CI/CD, observabilidad, deploy en Railway
+- Persistir el `RiskState` (circuit breaker diario) entre reinicios: hoy vive en
+  memoria en el loop, un restart lo resetea. OK para paper, no para mainnet.
 
-**Orden recomendado:** primero validar estrategia (paso 4). Si hay edge,
-completar killswitch + notifier + bot.py, hacer paper trading en testnet, y
-recién después CI/CD y deploy. Si no hay edge, iterar la estrategia primero.
+### ⚠️ Bloqueante real: la estrategia no tiene edge
+La validación con data real de Binance (jun-2026) confirmó lo que predecía la
+data sintética: el cruce de medias **no le gana al Buy & Hold** en BTC.
+
+| variante | Sharpe OOS | maxDD | vs B&H |
+|----------|-----------|-------|--------|
+| SMA base | -1.03 | -44% | peor |
+| EMA base | -1.75 | -57% | peor |
+| mejor variante (SMA+trailing) | -0.95 | -39% | peor |
+
+Buy & Hold del período: -2.4%. **Ninguna variante da Sharpe positivo.** Por el
+criterio de ARCHITECTURE.md §8, no se avanza a mainnet. La infraestructura está
+lista y es agnóstica de estrategia: el próximo trabajo es **probar otra
+estrategia** (mean-reversion, breakout con filtro de volatilidad, momentum
+multi-timeframe), no seguir construyendo plomería.
+
+**Orden recomendado:** la capa de seguridad ya está. El siguiente paso es
+iterar la ESTRATEGIA hasta encontrar edge OOS; recién ahí tiene sentido el
+adaptador testnet, paper trading, CI/CD y deploy.
 
 ---
 

@@ -30,8 +30,12 @@ sobre la velocidad**.
 
 - ✅ Etapa 1: scaffold (conexión, balance, OHLCV — testnet, solo lectura)
 - ✅ Etapa 2: backtest walk-forward SMA/EMA
-- 🔨 Etapa 4: capa de seguridad (arrancando por `risk.py`)
-- ⛔ Etapa 5: mainnet — bloqueado
+- ⚠️ Validación con data real (jun-2026): el cruce de medias NO tiene edge en
+  BTC. Sharpe OOS negativo en todas las variantes (base y con filtros), peor
+  que Buy & Hold. Antes de etapa 3/5 hay que CAMBIAR de estrategia.
+- ✅ Etapa 4: capa de seguridad completa con tests (risk, state, orders,
+  journal, config_versions, killswitch, notifier, bot). 97 tests en verde.
+- ⛔ Etapa 5: mainnet — bloqueado (y sin estrategia con edge, no se habilita)
 
 ---
 

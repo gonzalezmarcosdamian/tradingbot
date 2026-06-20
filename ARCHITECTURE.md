@@ -40,11 +40,17 @@ multi-exchange, ML, dashboard web. Se suman solo si el core funciona.
 |-------|-----------|--------|--------|
 | 1 | Scaffold: conexión, balance, OHLCV (testnet, solo lectura) | Nulo | ✅ Hecho |
 | 2 | Estrategia + backtest walk-forward (SMA/EMA) | Nulo | ✅ Hecho |
-| 3 | Paper trading en testnet (bot opera con plata falsa) | Nulo | Pendiente |
-| 4 | **Capa de seguridad** (ver sección 5) | — | En progreso |
+| 3 | Paper trading en testnet (bot opera con plata falsa) | Nulo | Pendiente (falta adaptador CCXT→testnet) |
+| 4 | **Capa de seguridad** (ver sección 5) | — | ✅ Hecho (97 tests) |
 | 5 | Mainnet con capital mínimo, supervisado | Real $ | Bloqueado |
 
 **Regla dura:** mainnet permanece bloqueado por código hasta completar la etapa 4.
+
+> ⚠️ **Validación de estrategia (jun-2026):** el walk-forward sobre data real de
+> Binance confirmó que el cruce de medias NO aporta edge en BTC (Sharpe OOS
+> negativo en todas las variantes, drawdowns peores que B&H). La capa de
+> seguridad está completa, pero por el criterio de la sección 8 NO se avanza a
+> etapa 5 hasta tener una estrategia con edge demostrado out-of-sample.
 
 ---
 
