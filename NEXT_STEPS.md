@@ -113,10 +113,17 @@ data sintética: el cruce de medias **no le gana al Buy & Hold** en BTC.
 | mejor variante (SMA+trailing) | -0.95 | -39% | peor |
 
 Buy & Hold del período: -2.4%. **Ninguna variante da Sharpe positivo.** Por el
-criterio de ARCHITECTURE.md §8, no se avanza a mainnet. La infraestructura está
-lista y es agnóstica de estrategia: el próximo trabajo es **probar otra
-estrategia** (mean-reversion, breakout con filtro de volatilidad, momentum
-multi-timeframe), no seguir construyendo plomería.
+criterio de ARCHITECTURE.md §8, no se avanza a mainnet.
+
+**Actualización (jun-2026): se probaron 5 familias alternativas** (RSI reversion,
+Bollinger, Donchian breakout, Donchian+trend, Momentum) con walk-forward sobre
+data real → **ninguna tiene edge** tampoco (Sharpe OOS -1.3 a -2.3, todas peor
+que B&H). Detalle completo y caminos a seguir en **`RESEARCH_RESULTS.md`**.
+
+Conclusión: el problema no es la plomería (está completa, 117 tests) sino que no
+hay edge accesible con timing de precio puro en BTC 1h en este régimen. Próximo
+paso recomendado: **camino 1 de RESEARCH_RESULTS.md** (DCA/rebalanceo, que usa
+toda la capa de seguridad y NO requiere edge) o cambiar timeframe/datos.
 
 **Orden recomendado:** la capa de seguridad ya está. El siguiente paso es
 iterar la ESTRATEGIA hasta encontrar edge OOS; recién ahí tiene sentido el
