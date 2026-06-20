@@ -1,0 +1,27 @@
+# Claves y secretos — NUNCA commitear
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Logs y estado
+logs/
+*.log
+state/
+data/
+*.db
+*.json.bak
+
+# Testing
+.pytest_cache/
+.coverage
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
