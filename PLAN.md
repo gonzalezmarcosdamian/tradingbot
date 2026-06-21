@@ -110,7 +110,39 @@ al B&H. Reproducir: `python run_research_ensemble.py`.
 
 > **Patrón (10+ negativos): el timing de precio puro sobre BTC 1h no tiene edge
 > accesible.** Las variantes simples (cruces, filtros, MTF, ensamble) están
-> agotadas. Para iterar con chance real hay que CAMBIAR de enfoque (ver abajo).
+> agotadas.
+
+### Barrido exhaustivo de enfoques NUEVOS (A–D)
+
+| Exp | Enfoque | Mejor Sharpe OOS | vs B&H | Reproducir |
+|---|---|--:|---|---|
+| A | Volatility breakout (Keltner+ATR, ±volfilt) | -0.96 | ❌ | `run_research_breakout.py` |
+| B | Mean-reversion intradía 15m (Bollinger/RSI) | -1.54 | ❌ (fees) | `run_research_intraday.py` |
+| C | Market-neutral par BTC/ETH (z-score spread) | -1.00 | ❌ | `run_research_pairs.py` |
+| D | No-precio: funding rate (carry/contrarian) | +0.04 | ❌ | `run_research_funding.py` |
+
+**Detalle D (lo único no-terrible):** el *contrarian* de funding (long cuando el
+funding es extremadamente negativo) da Sharpe ~0 pero con **drawdown -32% vs
+-52% del B&H** y solo 28% de exposición. No es edge (no le gana al B&H en
+Sharpe), pero sugiere que el funding extremo aporta info de RIESGO (evita los
+peores tramos). Útil como overlay risk-off, no como generador de alpha.
+
+---
+
+## 6. VEREDICTO FINAL (research cerrado)
+
+Se probaron **~14 enfoques** exhaustivamente con backtest honesto sobre data
+real: cruces SMA/EMA, filtros (trend/regime/trailing), RSI, Bollinger, Donchian,
+momentum, multi-timeframe, ensamble, volatility breakout, mean-reversion
+intradía, market-neutral de pares y funding rate. **Ninguno supera al Buy & Hold
+en Sharpe ajustado por riesgo.**
+
+Conclusión honesta: **no hay alpha accesible para este setup retail sobre BTC.**
+Lo que SÍ sirve y está validado:
+- **DCA** (acumular) — el producto razonable, no requiere edge.
+- **Funding contrarian como overlay risk-off** — opcional, reduce drawdown.
+
+Trading por alpha: la evidencia dice que no. No se lleva a mainnet.
 
 ---
 
