@@ -247,6 +247,9 @@ def run_once(
     if report.discrepancies:
         deps.journal.log(EventType.RECONCILE, "discrepancias en reconciliación",
                          {"discrepancies": report.discrepancies})
+        # A stdout también: en producción necesitamos ver POR QUÉ reconcilió así.
+        for d in report.discrepancies:
+            print(f"[reconcile] {d}", flush=True)
     if not report.safe_to_trade:
         return _halt(deps, "reconciliación insegura al arrancar", Action.UNSAFE_HALT)
 
@@ -296,9 +299,13 @@ def run_forever(
             result = run_once(deps, config, risk_state, risk_config, today_fn())
             deps.journal.log(EventType.INFO, f"iteración: {result.action.value}",
                              {"detail": result.detail})
+            # También a stdout: en producción (Railway) los logs son la ventana
+            # principal para ver qué hace el bot sin abrir el journal del volumen.
+            print(f"[iter {count + 1}] {result.action.value} — {result.detail}", flush=True)
         except Exception as e:  # red/exchange inestable: seguir vivo, alertar
             deps.journal.log(EventType.ERROR, f"error en iteración: {e}")
             deps.notifier.error("loop", str(e))
+            print(f"[iter {count + 1}] ERROR: {e}", flush=True)
         count += 1
         if iterations is not None and count >= iterations:
             break
@@ -343,7 +350,9 @@ def main():
         slow=int(os.getenv("SLOW", "50")),
     )
     # Una iteración por vela: dormimos lo que dura el timeframe.
-    interval = client.parse_timeframe(Config.TIMEFRAME)
+    # POLL_SECONDS permite acelerar el ciclo para demos/observabilidad (0 = usar
+    # el timeframe). Iterar más rápido que la vela solo repite la misma señal.
+    interval = int(os.getenv("POLL_SECONDS", "0")) or client.parse_timeframe(Config.TIMEFRAME)
 
     deps.journal.log(EventType.INFO,
                      f"bot iniciado (testnet) {config.symbol} {config.timeframe} "

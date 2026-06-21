@@ -29,6 +29,12 @@ def build_exchange(config: Config = Config) -> ccxt.binance:
             "enableRateLimit": True,  # respeta rate limits automáticamente
             "options": {
                 "defaultType": "spot",
+                # Sincroniza el reloj local con el del exchange antes de firmar:
+                # evita "Timestamp outside recvWindow" cuando el host (ej. un
+                # contenedor en la nube) tiene el reloj corrido. Sin esto, la
+                # primera llamada firmada (fetch_balance) puede fallar y disparar
+                # un halt de reconciliación.
+                "adjustForTimeDifference": True,
             },
         }
     )
@@ -92,12 +98,14 @@ class CCXTExchange:
 
     def fetch_base_balance(self, symbol: str) -> float:
         """Balance TOTAL del activo base (verdad de la posición en cuenta dedicada)."""
+        self._ensure_markets()  # sincroniza la hora (adjustForTimeDifference) antes de firmar
         base, _ = self._base_quote(symbol)
         bal = self.client.fetch_balance()
         return float((bal.get("total", {}) or {}).get(base, 0.0) or 0.0)
 
     def fetch_quote_balance(self, symbol: str) -> float:
         """Balance LIBRE de quote (USDT disponible para comprar)."""
+        self._ensure_markets()
         _, quote = self._base_quote(symbol)
         bal = self.client.fetch_balance()
         return float((bal.get("free", {}) or {}).get(quote, 0.0) or 0.0)
