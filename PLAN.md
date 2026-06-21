@@ -91,12 +91,26 @@ Walk-forward OOS, BTC/USDT 2 años (B&H Sharpe 0.23):
 por el marco mayor no rescata el cruce — coincide con que el `trend_filter` de 1h
 ya había empeorado las cosas. Reproducir: `python run_research_mtf.py`.
 
-### Exp. 2 — Sizing por volatilidad (ATR) — pendiente
-### Exp. 3 — Ensamble de señales (voto) — pendiente
+### Exp. 2 — Sizing por volatilidad (ATR) — descartado
+El sizing solo ESCALA una señal; no crea edge. Sobre señales de Sharpe negativo
+solo cambia la magnitud de la pérdida, no el signo. No vale correrlo.
 
-> Patrón hasta ahora (7 familias + filtros + MTF): **el timing de precio sobre
-> BTC 1h no tiene edge accesible.** Cada experimento que falla refuerza que el
-> producto razonable es el **DCA** (acumular), no tradear.
+### Exp. 3 — Ensamble de señales por voto — ❌
+Backtest 2 años (B&H Sharpe 0.23). Mejor variante: mayoría (≥2 de 3).
+
+| variante | ret | Sharpe | maxDD |
+|---|--:|--:|--:|
+| SMA(20,50) | -41% | -0.70 | -60% |
+| Donchian(20,10) | -52% | -1.20 | -65% |
+| Momentum(168) | -64% | -1.50 | -68% |
+| Ensamble mayoría ≥2 | -47% | **-0.94** | -67% |
+
+**Veredicto:** combinar señales malas da una señal mala. Ningún ensamble supera
+al B&H. Reproducir: `python run_research_ensemble.py`.
+
+> **Patrón (10+ negativos): el timing de precio puro sobre BTC 1h no tiene edge
+> accesible.** Las variantes simples (cruces, filtros, MTF, ensamble) están
+> agotadas. Para iterar con chance real hay que CAMBIAR de enfoque (ver abajo).
 
 ---
 
