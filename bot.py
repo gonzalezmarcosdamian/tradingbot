@@ -60,6 +60,11 @@ class BotExchange(Protocol):
 SignalFn = Callable[[pd.Series, int, int], pd.Series]
 
 
+# Al vender se deja un margen mínimo: vender el 100% exacto del saldo suele dar
+# "insufficient balance" por redondeo/fees. 0.999 = vende el 99.9%.
+SELL_SAFETY = 0.999
+
+
 @dataclass
 class BotConfig:
     symbol: str = "BTC/USDT"
@@ -176,7 +181,7 @@ def _apply_buy_result(deps, config, res, price, decision, risk_state) -> RunResu
 def _do_exit(deps, config, price, bar_id, risk_state, risk_config, today) -> RunResult:
     """Cierra la posición a mercado (la salida normal de la estrategia)."""
     state = deps.store.load_state()
-    amount = state.base_qty
+    amount = state.base_qty * SELL_SAFETY  # margen para no rebotar por precisión
     # Sincronizar el RiskState con la posición real antes de aprobar la salida:
     # tras un reinicio el RiskState arranca en cero, pero el estado persistido
     # (ya reconciliado contra el exchange) es la verdad sobre si hay posición.
