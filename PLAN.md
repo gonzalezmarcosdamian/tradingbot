@@ -77,9 +77,26 @@ sigue siendo: para BTC, **acumular (DCA) > tradear**.
 
 ---
 
-## 5. Resultados de research (se completa en estos días)
+## 5. Resultados de research
 
-_(pendiente — acá van los números de los experimentos del track 3)_
+### Exp. 1 — Confirmación multi-timeframe (cruce 1h + tendencia 4h) — ❌
+Walk-forward OOS, BTC/USDT 2 años (B&H Sharpe 0.23):
+
+| variante | ret OOS | Sharpe | maxDD |
+|---|--:|--:|--:|
+| cruce 1h (base) | -39.5% | -0.96 | -47.3% |
+| 1h + tendencia 4h | -58.1% | **-2.17** | -62.2% |
+
+**Veredicto:** el filtro 4h **empeora** (más negativo, peor drawdown). Filtrar
+por el marco mayor no rescata el cruce — coincide con que el `trend_filter` de 1h
+ya había empeorado las cosas. Reproducir: `python run_research_mtf.py`.
+
+### Exp. 2 — Sizing por volatilidad (ATR) — pendiente
+### Exp. 3 — Ensamble de señales (voto) — pendiente
+
+> Patrón hasta ahora (7 familias + filtros + MTF): **el timing de precio sobre
+> BTC 1h no tiene edge accesible.** Cada experimento que falla refuerza que el
+> producto razonable es el **DCA** (acumular), no tradear.
 
 ---
 
