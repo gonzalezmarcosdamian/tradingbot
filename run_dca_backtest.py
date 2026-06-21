@@ -12,6 +12,7 @@ Uso:
 Baja data pública de Binance (sin claves).
 """
 
+import os
 import sys
 import ccxt
 
@@ -24,7 +25,7 @@ WARMUP = 35                # días iniciales sin comprar (para tener MA/RSI)
 STEP_DAYS = 7              # compra semanal
 DAY = 86400
 
-PERIOD_BUDGET = 100.0      # presupuesto por período (mes)
+PERIOD_BUDGET = float(os.getenv("DCA_BUDGET", "100"))  # presupuesto por período (mes)
 BUYS_PER_PERIOD = 4        # 4 compras semanales por período
 
 
