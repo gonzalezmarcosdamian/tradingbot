@@ -96,6 +96,11 @@ class CCXTExchange:
         self._ensure_markets()
         return self.client.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
 
+    def fetch_price(self, symbol: str) -> float:
+        """Último precio (para sizing de compras DCA a mercado)."""
+        self._ensure_markets()
+        return float(self.client.fetch_ticker(symbol)["last"])
+
     def fetch_base_balance(self, symbol: str) -> float:
         """Balance TOTAL del activo base (verdad de la posición en cuenta dedicada)."""
         self._ensure_markets()  # sincroniza la hora (adjustForTimeDifference) antes de firmar

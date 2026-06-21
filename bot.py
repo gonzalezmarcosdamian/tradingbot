@@ -317,7 +317,13 @@ def run_forever(
 
 def main():
     """Arranca el bot en modo paper trading (testnet). Mainnet sigue bloqueado
-    por el guard de config.py: este entrypoint NO opera con dinero real."""
+    por el guard de config.py: este entrypoint NO opera con dinero real.
+
+    MODE=dca delega al Smart DCA (dca.py); por defecto corre la estrategia."""
+    if os.getenv("MODE", "strategy").lower() == "dca":
+        import dca
+        return dca.main()
+
     from config import Config
     from exchange import build_exchange, CCXTExchange
     from strategy import STRATEGIES
