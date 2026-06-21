@@ -69,8 +69,9 @@ def test_market_filters_parsea_binance():
 
 # ── Balances ───────────────────────────────────────────────────────
 
-def test_base_balance_usa_total():
-    assert adapter().fetch_base_balance("BTC/USDT") == 0.5
+def test_base_balance_usa_free():
+    # Usa 'free' (operable), no 'total': evita vender saldo bloqueado.
+    assert adapter().fetch_base_balance("BTC/USDT") == 0.4
 
 
 def test_quote_balance_usa_free():

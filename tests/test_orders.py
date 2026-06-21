@@ -190,3 +190,18 @@ def test_timeout_y_no_se_puede_verificar_es_uncertain():
     res = send_order(buy_market(0.01), ex)
     assert res.outcome == OrderOutcome.UNCERTAIN
     assert res.client_order_id  # devolvemos el ID para reconciliar
+
+
+class InsufficientBalanceExchange(FakeExchange):
+    """create_order falla con un rechazo DEFINITIVO (saldo insuficiente)."""
+    def create_order(self, symbol, type, side, amount, price=None, params=None):
+        self.create_calls += 1
+        raise Exception("Account has insufficient balance for requested action.")
+
+
+def test_rechazo_definitivo_es_rejected_no_uncertain():
+    # Un "insufficient balance" NO es incertidumbre de red: es rechazo → no halt.
+    ex = InsufficientBalanceExchange()
+    res = send_order(buy_market(0.01), ex)
+    assert res.outcome == OrderOutcome.REJECTED
+    assert "insufficient" in res.reason.lower()

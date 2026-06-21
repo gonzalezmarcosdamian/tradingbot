@@ -102,11 +102,16 @@ class CCXTExchange:
         return float(self.client.fetch_ticker(symbol)["last"])
 
     def fetch_base_balance(self, symbol: str) -> float:
-        """Balance TOTAL del activo base (verdad de la posición en cuenta dedicada)."""
+        """Balance DISPONIBLE (free) del activo base.
+
+        Usamos 'free' (no 'total') porque es lo realmente operable: si parte del
+        balance está bloqueado en órdenes, venderlo daría 'insufficient balance'.
+        En una cuenta dedicada sin órdenes abiertas, free == total.
+        """
         self._ensure_markets()  # sincroniza la hora (adjustForTimeDifference) antes de firmar
         base, _ = self._base_quote(symbol)
         bal = self.client.fetch_balance()
-        return float((bal.get("total", {}) or {}).get(base, 0.0) or 0.0)
+        return float((bal.get("free", {}) or {}).get(base, 0.0) or 0.0)
 
     def fetch_quote_balance(self, symbol: str) -> float:
         """Balance LIBRE de quote (USDT disponible para comprar)."""

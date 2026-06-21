@@ -134,6 +134,26 @@ def validate_order(req: OrderRequest, exchange: ExchangeClient) -> Optional[str]
 
 # ── Envío idempotente ─────────────────────────────────────────────
 
+# Errores que significan rechazo DEFINITIVO (la orden NO entró): no son
+# incertidumbre de red, así que no deben gatillar reconciliación/halt.
+_DEFINITE_REJECTION_TYPES = {
+    "InsufficientFunds", "InvalidOrder", "BadRequest", "BadSymbol",
+    "NotSupported", "ArgumentsRequired",
+}
+_DEFINITE_REJECTION_MSGS = (
+    "insufficient", "min notional", "minimum notional", "filter failure",
+    "invalid quantity", "lot_size", "lot size", "precision",
+)
+
+
+def _is_definite_rejection(e: Exception) -> bool:
+    """True si el error indica que la orden fue rechazada con certeza (no entró)."""
+    if type(e).__name__ in _DEFINITE_REJECTION_TYPES:
+        return True
+    msg = str(e).lower()
+    return any(s in msg for s in _DEFINITE_REJECTION_MSGS)
+
+
 def _classify(order: dict) -> OrderResult:
     """Traduce la respuesta del exchange a un OrderResult."""
     status = order.get("status")
@@ -185,7 +205,11 @@ def send_order(req: OrderRequest, exchange: ExchangeClient) -> OrderResult:
         )
         return _classify(order)
     except Exception as e:
-        # 4. Timeout / error de red: NO asumir que falló. Verificar por ID.
+        # 4a. Rechazo definitivo (saldo, filtros, orden inválida): NO entró.
+        #     Es REJECTED, no incierto → no dispara reconciliación/halt.
+        if _is_definite_rejection(e):
+            return OrderResult(OrderOutcome.REJECTED, f"rechazada por el exchange: {e}", coid)
+        # 4b. Timeout / error de red: NO asumir que falló. Verificar por ID.
         try:
             check = exchange.fetch_order(coid, req.symbol)
             if check:
