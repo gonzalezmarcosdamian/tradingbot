@@ -199,6 +199,12 @@ def _do_exit(deps, config, price, bar_id, risk_state, risk_config, today) -> Run
     if res.outcome == OrderOutcome.FILLED:
         fill_price = res.average_price or price
         pnl = (fill_price - state.avg_entry_price) * res.filled
+        pnl_pct = (fill_price / state.avg_entry_price - 1) if state.avg_entry_price else 0.0
+        # Registro estructurado del trade cerrado, para que evaluator.py mida.
+        deps.journal.log(EventType.ORDER, "trade cerrado",
+                         {"closed_trade": True, "entry": state.avg_entry_price,
+                          "exit": fill_price, "qty": res.filled,
+                          "pnl": pnl, "pnl_pct": pnl_pct})
         deps.store.save_state(BotState(in_position=False, base_qty=0.0,
                                        avg_entry_price=0.0, quote_invested=0.0,
                                        known_orders=state.known_orders))
@@ -283,6 +289,7 @@ def run_forever(
     iterations: Optional[int] = None,
     sleep_fn: Callable[[float], None] = time.sleep,
     today_fn: Callable[[], date] = date.today,
+    report_every: int = 0,
 ) -> int:
     """Corre run_once() en bucle, durmiendo entre iteraciones.
 
@@ -306,6 +313,13 @@ def run_forever(
             deps.journal.log(EventType.ERROR, f"error en iteración: {e}")
             deps.notifier.error("loop", str(e))
             print(f"[iter {count + 1}] ERROR: {e}", flush=True)
+        # Reporte periódico de performance a stdout (visible en los logs sin SSH)
+        if report_every and (count + 1) % report_every == 0:
+            try:
+                from evaluator import evaluate, format_report
+                print(format_report(evaluate(deps.journal)), flush=True)
+            except Exception:
+                pass
         count += 1
         if iterations is not None and count >= iterations:
             break
@@ -365,7 +379,8 @@ def main():
                      f"{strat_name} fast={config.fast} slow={config.slow}")
     deps.notifier.send(f"🤖 Bot iniciado en testnet — {config.symbol} {config.timeframe} "
                        f"({strat_name}). Paper trading.")
-    run_forever(deps, config, RiskState(), RiskConfig(), sleep_seconds=interval)
+    run_forever(deps, config, RiskState(), RiskConfig(), sleep_seconds=interval,
+                report_every=int(os.getenv("REPORT_EVERY", "12")))
 
 
 if __name__ == "__main__":
