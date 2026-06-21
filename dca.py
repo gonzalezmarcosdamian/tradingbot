@@ -209,9 +209,16 @@ def decide(config: DCAConfig, state: DCAState, now_ts: float,
     if remaining_budget <= 0:
         return DCADecision(False, "presupuesto del período agotado")
 
-    # 3. Cuota justa e inclinación por análisis
+    # 3. Cuota justa e inclinación por análisis.
+    #    En la ÚLTIMA compra del período se deploya TODO lo que queda (sin que el
+    #    múltiplo lo achique): así el smart cambia el *cuándo*, no el *cuánto*
+    #    total. Sin esto, en tendencia alcista subgastaba el presupuesto y la
+    #    plata sin usar se perdía al cerrar el período (rolling 0/37 ventanas).
     fair_share = remaining_budget / remaining_buys
-    desired = fair_share * multiplier
+    if remaining_buys == 1:
+        desired = remaining_budget
+    else:
+        desired = fair_share * multiplier
 
     # 4. Topes: no pasar el presupuesto restante ni el cash disponible
     upper = min(remaining_budget, available_cash)
