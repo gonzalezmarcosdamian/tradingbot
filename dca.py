@@ -20,6 +20,7 @@ NO usa risk.py (ese modela una posición con entrada/salida; DCA acumula).
 Toda la lógica de decisión es PURA y testeable sin red.
 """
 
+import csv
 import json
 import os
 import sys
@@ -76,6 +77,10 @@ class DCAState:
     last_buy_ts: Optional[float] = None
     total_spent: float = 0.0
     total_buys: int = 0
+    # ── Acumulados para comparar contra un DCA plano (mismo gasto, cuotas iguales) ──
+    smart_total_btc: float = 0.0
+    flat_total_spent: float = 0.0
+    flat_total_btc: float = 0.0
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -218,6 +223,50 @@ def decide(config: DCAConfig, state: DCAState, now_ts: float,
                        quote_amount=amount, fair_share=fair_share, multiplier=multiplier)
 
 
+# ── Evaluación vs DCA plano ────────────────────────────────────────
+
+def compare(state: DCAState) -> dict:
+    """Compara Smart DCA contra un DCA plano (mismo presupuesto, cuotas iguales).
+
+    Métrica clave: COSTO PROMEDIO por BTC (más bajo = mejor). El edge positivo
+    significa que el smart acumuló a un costo medio más barato que el plano.
+    Nota: dentro de un período las cuotas difieren; converge al cerrar el período.
+    """
+    smart_avg = state.total_spent / state.smart_total_btc if state.smart_total_btc > 0 else 0.0
+    flat_avg = state.flat_total_spent / state.flat_total_btc if state.flat_total_btc > 0 else 0.0
+    edge_pct = (flat_avg - smart_avg) / flat_avg * 100 if flat_avg > 0 else 0.0
+    return {
+        "smart_btc": state.smart_total_btc,
+        "flat_btc": state.flat_total_btc,
+        "smart_spent": state.total_spent,
+        "flat_spent": state.flat_total_spent,
+        "smart_avg_cost": smart_avg,
+        "flat_avg_cost": flat_avg,
+        "smart_edge_pct": edge_pct,
+    }
+
+
+def _append_eval(now_ts, price, multiplier, smart_quote, smart_btc, flat_quote, flat_btc):
+    """Agrega una fila al CSV de evaluación en DATA_DIR (análisis posterior).
+
+    Persiste, por compra: qué hizo el smart y qué habría hecho el plano al mismo
+    precio. Si falla la escritura, no rompe: el journal y el estado ya guardaron."""
+    base = os.getenv("DATA_DIR", "./data")
+    try:
+        os.makedirs(base, exist_ok=True)
+        path = os.path.join(base, "dca_eval.csv")
+        new = not os.path.exists(path)
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            if new:
+                w.writerow(["ts", "price", "multiplier", "smart_quote", "smart_btc",
+                            "flat_quote", "flat_btc"])
+            w.writerow([now_ts, price, round(multiplier, 4), round(smart_quote, 4),
+                        smart_btc, round(flat_quote, 4), flat_btc])
+    except OSError:
+        pass
+
+
 # ── Orquestación de una compra ─────────────────────────────────────
 
 @dataclass
@@ -263,12 +312,24 @@ def run_dca_once(deps: DCADeps, config: DCAConfig, store: DCAStore, now_ts: floa
 
     if res.outcome == OrderOutcome.FILLED:
         fill_price = res.average_price or price
+        # Contrafáctico: qué habría hecho un DCA PLANO en este mismo momento
+        # (cuota fija = presupuesto / nº compras), para poder compararlos.
+        flat_quote = config.period_budget / config.buys_per_period
+        flat_btc = flat_quote / fill_price
+
         state.spent_this_period += decision.quote_amount
         state.buys_this_period += 1
         state.last_buy_ts = now_ts
         state.total_spent += decision.quote_amount
         state.total_buys += 1
+        state.smart_total_btc += res.filled
+        state.flat_total_spent += flat_quote
+        state.flat_total_btc += flat_btc
         store.save(state)
+
+        _append_eval(now_ts, fill_price, a.multiplier,
+                     decision.quote_amount, res.filled, flat_quote, flat_btc)
+        deps.journal.log(EventType.INFO, "dca eval", compare(state))
         deps.notifier.entry(config.symbol, res.filled, fill_price, None)
         return DCAResult(True, "compra ejecutada", decision.quote_amount, a, res)
 
@@ -293,6 +354,11 @@ def run_forever_dca(deps, config, store, *, sleep_seconds, iterations=None,
             deps.journal.log(EventType.INFO, f"dca iteración: {res.reason}")
             tag = f"BUY {res.quote_amount:.2f}" if res.bought else "skip"
             print(f"[dca {count + 1}] {tag} — {res.reason}", flush=True)
+            if res.bought:
+                c = compare(store.load())
+                print(f"[dca-eval] smart {c['smart_btc']:.6f} BTC @ ${c['smart_avg_cost']:,.0f}"
+                      f" | flat {c['flat_btc']:.6f} BTC @ ${c['flat_avg_cost']:,.0f}"
+                      f" | edge {c['smart_edge_pct']:+.2f}%", flush=True)
         except Exception as e:
             deps.journal.log(EventType.ERROR, f"dca error: {e}")
             deps.notifier.error("dca", str(e))

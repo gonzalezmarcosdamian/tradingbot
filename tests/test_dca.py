@@ -10,7 +10,7 @@ import killswitch
 from dca import (
     DCAConfig, DCAState, DCAStore, DCADeps, DCADecision,
     simple_ma, rsi_last, analyze, maybe_reset_period, decide,
-    run_dca_once,
+    run_dca_once, compare,
 )
 from journal import Journal
 from notifier import Notifier
@@ -204,3 +204,28 @@ def test_run_dca_compra_incierta_hace_halt(tmp_path, monkeypatch):
     res = run_dca_once(deps, cfg, store, now_ts=0)
     assert res.bought is False
     assert killswitch.is_halted() is True  # incierta → halt
+
+
+# ── Evaluación vs DCA plano ────────────────────────────────────────
+
+def test_compare_smart_mas_barato_da_edge_positivo():
+    # Mismo gasto, pero smart acumuló más BTC → costo promedio menor → edge > 0
+    st = DCAState(total_spent=100, smart_total_btc=0.0011,
+                  flat_total_spent=100, flat_total_btc=0.0010)
+    c = compare(st)
+    assert c["smart_avg_cost"] < c["flat_avg_cost"]
+    assert c["smart_edge_pct"] > 0
+
+
+def test_run_dca_guarda_contrafactico_plano(tmp_path, monkeypatch):
+    cfg = DCAConfig(period_budget=100, buys_per_period=4, smart=False)
+    ex = FakeDCAExchange(price=100.0)
+    deps, store = make_deps(ex, tmp_path, monkeypatch)
+    run_dca_once(deps, cfg, store, now_ts=0)
+    st = store.load()
+    assert st.smart_total_btc > 0 and st.flat_total_btc > 0
+    assert round(st.flat_total_spent) == 25            # cuota plana = 100/4
+    # con smart off, la compra smart ≈ plana (difieren solo por el redondeo al
+    # step real del exchange; el plano es teórico quote/precio)
+    assert abs(st.smart_total_btc - st.flat_total_btc) < 1e-3
+    assert (tmp_path / "dca_eval.csv").exists()         # CSV de evaluación escrito
