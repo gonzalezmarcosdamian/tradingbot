@@ -418,7 +418,8 @@ def main():
     deps.notifier.send(f"🤖 Smart DCA iniciado en testnet — {config.symbol}")
 
     poll = int(os.getenv("POLL_SECONDS", "3600"))
-    run_forever_dca(deps, config, store, sleep_seconds=poll)
+    once = os.getenv("RUN_ONCE", "").lower() in ("1", "true", "yes")
+    run_forever_dca(deps, config, store, sleep_seconds=poll, iterations=1 if once else None)
 
 
 if __name__ == "__main__":

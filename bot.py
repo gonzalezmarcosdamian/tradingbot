@@ -408,8 +408,10 @@ def main():
                      f"{strat_name} fast={config.fast} slow={config.slow}")
     deps.notifier.send(f"🤖 Bot iniciado en testnet — {config.symbol} {config.timeframe} "
                        f"({strat_name}). Paper trading.")
+    once = os.getenv("RUN_ONCE", "").lower() in ("1", "true", "yes")
     run_forever(deps, config, RiskState(), RiskConfig(), sleep_seconds=interval,
-                report_every=int(os.getenv("REPORT_EVERY", "12")))
+                report_every=int(os.getenv("REPORT_EVERY", "12")),
+                iterations=1 if once else None)
 
 
 if __name__ == "__main__":
