@@ -344,7 +344,7 @@ def main():
         return dca.main()
 
     from config import Config
-    from exchange import build_exchange, CCXTExchange
+    from exchange import build_exchange, build_public_data_client, CCXTExchange
     from strategy import STRATEGIES
 
     Config.validate()
@@ -359,7 +359,8 @@ def main():
     strat_name = os.getenv("STRATEGY", "SMA")
     signal_fn = STRATEGIES.get(strat_name, STRATEGIES["SMA"])
     client = build_exchange(Config)
-    exchange = CCXTExchange(client, Config.SYMBOL)
+    # Señales con data real de mainnet (testnet no tiene historia diaria suficiente).
+    exchange = CCXTExchange(client, Config.SYMBOL, data_client=build_public_data_client())
 
     deps = BotDeps(
         exchange=exchange,

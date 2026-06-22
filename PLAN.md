@@ -142,12 +142,38 @@ El ML fue el peor (-99%): predecir la vela de 1h es ruido, el modelo sobre-opera
 y los fees (0.15%/lado) liquidan la cuenta. Confirma la causa raíz de TODO:
 **a esta frecuencia, los costos de transacción superan cualquier señal débil.**
 
-Conclusión honesta: **no hay alpha accesible para este setup retail sobre BTC.**
-Lo que SÍ sirve y está validado:
-- **DCA** (acumular) — el producto razonable, no requiere edge.
-- **Funding contrarian como overlay risk-off** — opcional, reduce drawdown.
+Conclusión (corregida en §7): a frecuencia **intradía** no hay edge — los fees
+matan cualquier señal débil. Pero la frecuencia importaba.
 
-Trading por alpha: la evidencia dice que no. No se lleva a mainnet.
+---
+
+## 7. ⭐ HALLAZGO: trend-following DIARIO sí tiene edge
+
+Al subir la temporalidad (la causa raíz era el costo, no la señal), el cruce
+**SMA diario** cambia el resultado. Walk-forward OOS sobre 8 años (2018-2026):
+
+| métrica | SMA-1d (OOS) | Buy & Hold |
+|---|--:|--:|
+| Retorno total | **+1199%** | +1006% |
+| Sharpe | **1.01** | 0.86 |
+| Max drawdown | **-54%** | -81% |
+| Años que gana | 4/8 | — |
+
+**Carácter (clásico del trend-following):**
+- Gana en **retorno, Sharpe y drawdown** sobre el ciclo completo.
+- Superpoder: en **bear se va a cash** y evita el derrumbe (2022: -9% vs -66%).
+- Costo: **llega tarde en bulls explosivos** (2020, 2023 los gana el B&H) y sufre
+  algo en lateral (2025). Es un edge **cíclico**, no de todos los años.
+
+Reproducir: `run_research_timeframes.py` (barrido 1h/4h/1d) y
+`run_research_daily_validate.py` (desglose por año, 8 años).
+
+### Implicancia
+La infraestructura YA está lista — el bot de estrategia solo necesita correr en
+**timeframe diario** (`DEFAULT_TIMEFRAME=1d`) en vez de intradía. Esto SÍ es un
+candidato real para paper trading serio (y eventualmente, con validación
+adicional, mainnet con capital mínimo). Pendiente antes de plata real:
+robustez en otros activos/períodos y elección estable de parámetros.
 
 ---
 

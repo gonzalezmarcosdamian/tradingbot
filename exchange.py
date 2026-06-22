@@ -46,6 +46,16 @@ def build_exchange(config: Config = Config) -> ccxt.binance:
     return exchange
 
 
+def build_public_data_client() -> ccxt.binance:
+    """Cliente público (mainnet, sin claves) SOLO para data de mercado.
+
+    La testnet tiene poca historia (no alcanza para medias largas). Para las
+    SEÑALES usamos data real de mainnet; la EJECUCIÓN sigue en testnet. Solo
+    lectura pública: no firma nada, no toca fondos.
+    """
+    return ccxt.binance({"enableRateLimit": True})
+
+
 def fetch_balance(exchange: ccxt.binance) -> dict:
     """Devuelve los balances no nulos de la cuenta."""
     balance = exchange.fetch_balance()
@@ -75,15 +85,22 @@ class CCXTExchange:
     El cliente se inyecta para poder testear con un fake sin tocar Binance.
     """
 
-    def __init__(self, client, symbol: str = "BTC/USDT"):
-        self.client = client
+    def __init__(self, client, symbol: str = "BTC/USDT", data_client=None):
+        self.client = client                       # ejecución (testnet): órdenes/saldos
+        self.data_client = data_client or client   # data (mainnet público): velas/precio
         self.symbol = symbol
         self._markets_loaded = False
+        self._data_markets_loaded = False
 
     def _ensure_markets(self):
         if not self._markets_loaded:
             self.client.load_markets()
             self._markets_loaded = True
+
+    def _ensure_data_markets(self):
+        if not self._data_markets_loaded:
+            self.data_client.load_markets()
+            self._data_markets_loaded = True
 
     @staticmethod
     def _base_quote(symbol: str):
@@ -93,13 +110,14 @@ class CCXTExchange:
     # ── Lectura de mercado ─────────────────────────────────────────
 
     def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int) -> list:
-        self._ensure_markets()
-        return self.client.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+        # Velas desde el cliente de DATA (mainnet público): historia completa.
+        self._ensure_data_markets()
+        return self.data_client.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
 
     def fetch_price(self, symbol: str) -> float:
-        """Último precio (para sizing de compras DCA a mercado)."""
-        self._ensure_markets()
-        return float(self.client.fetch_ticker(symbol)["last"])
+        """Último precio (para señal/sizing), desde el cliente de data."""
+        self._ensure_data_markets()
+        return float(self.data_client.fetch_ticker(symbol)["last"])
 
     def fetch_base_balance(self, symbol: str) -> float:
         """Balance DISPONIBLE (free) del activo base.
