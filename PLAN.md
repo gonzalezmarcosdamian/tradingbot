@@ -169,11 +169,39 @@ Reproducir: `run_research_timeframes.py` (barrido 1h/4h/1d) y
 `run_research_daily_validate.py` (desglose por año, 8 años).
 
 ### Implicancia
-La infraestructura YA está lista — el bot de estrategia solo necesita correr en
-**timeframe diario** (`DEFAULT_TIMEFRAME=1d`) en vez de intradía. Esto SÍ es un
-candidato real para paper trading serio (y eventualmente, con validación
-adicional, mainnet con capital mínimo). Pendiente antes de plata real:
-robustez en otros activos/períodos y elección estable de parámetros.
+La infraestructura YA está lista — el bot de estrategia corre en **timeframe
+diario** (`DEFAULT_TIMEFRAME=1d`). Candidato real para paper trading serio.
+
+---
+
+## 8. ✅ Robustez CONFIRMADA (Exp G)
+
+SMA diario con **parámetros FIJOS** (sin optimizar → sin sobre-ajuste) sobre 4
+activos (BTC, ETH, BNB, SOL), vs Buy & Hold:
+
+| parámetro | gana a B&H | Sharpe prom |
+|---|:--:|--:|
+| (10, 50) | **4/4** | +1.13 |
+| (20, 50) | **4/4** | +0.98 |
+| (20, 100) | **4/4** | +0.97 |
+| (50, 100) | 2/4 | +0.89 |
+| (50, 200) | 1/4 | +0.81 |
+
+**El edge generaliza:** los cruces rápidos (10/50, 20/50, 20/100) le ganan al
+B&H en los 4 activos con los MISMOS parámetros. No era suerte de BTC ni params
+overfitteados. Reproducir: `run_research_robust.py`.
+
+Caveats honestos: los drawdowns siguen siendo grandes (-53% a -81%, es crypto),
+aunque mejores que el B&H. El retorno absoluto es enorme por incluir bulls
+históricos — el número honesto es el **Sharpe** (~1.0-1.1 vs ~0.9 del B&H).
+
+**Parámetro elegido para producción: (20, 50)** — gana 4/4, robusto, menos
+trades que (10,50). Es el que ya corre el bot en vivo.
+
+### Estado: estrategia VALIDADA
+Trend-following diario 20/50: edge real, generaliza entre activos, params
+estables. Corriendo en paper (testnet). Pendiente antes de mainnet: período de
+observación en paper + decisión explícita del usuario + capital mínimo.
 
 ---
 
