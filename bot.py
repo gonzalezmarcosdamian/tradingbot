@@ -356,6 +356,8 @@ def main():
     por el guard de config.py: este entrypoint NO opera con dinero real.
 
     MODE=dca delega al Smart DCA (dca.py); por defecto corre la estrategia."""
+    from dotenv import load_dotenv
+    load_dotenv()  # cargar .env ANTES de leer MODE (config.py también lo hace)
     mode = os.getenv("MODE", "strategy").lower()
     if mode == "dca":
         import dca
