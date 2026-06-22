@@ -120,6 +120,7 @@ al B&H. Reproducir: `python run_research_ensemble.py`.
 | B | Mean-reversion intradía 15m (Bollinger/RSI) | -1.54 | ❌ (fees) | `run_research_intraday.py` |
 | C | Market-neutral par BTC/ETH (z-score spread) | -1.00 | ❌ | `run_research_pairs.py` |
 | D | No-precio: funding rate (carry/contrarian) | +0.04 | ❌ | `run_research_funding.py` |
+| E | ML + order-flow (logistic/gboost, walk-forward) | -8.8 | ❌❌ | `run_research_ml.py` |
 
 **Detalle D (lo único no-terrible):** el *contrarian* de funding (long cuando el
 funding es extremadamente negativo) da Sharpe ~0 pero con **drawdown -32% vs
@@ -131,11 +132,15 @@ peores tramos). Útil como overlay risk-off, no como generador de alpha.
 
 ## 6. VEREDICTO FINAL (research cerrado)
 
-Se probaron **~14 enfoques** exhaustivamente con backtest honesto sobre data
+Se probaron **~15 enfoques** exhaustivamente con backtest honesto sobre data
 real: cruces SMA/EMA, filtros (trend/regime/trailing), RSI, Bollinger, Donchian,
 momentum, multi-timeframe, ensamble, volatility breakout, mean-reversion
-intradía, market-neutral de pares y funding rate. **Ninguno supera al Buy & Hold
-en Sharpe ajustado por riesgo.**
+intradía, market-neutral de pares, funding rate y **ML con order-flow
+(microestructura)**. **Ninguno supera al Buy & Hold en Sharpe ajustado por riesgo.**
+
+El ML fue el peor (-99%): predecir la vela de 1h es ruido, el modelo sobre-opera
+y los fees (0.15%/lado) liquidan la cuenta. Confirma la causa raíz de TODO:
+**a esta frecuencia, los costos de transacción superan cualquier señal débil.**
 
 Conclusión honesta: **no hay alpha accesible para este setup retail sobre BTC.**
 Lo que SÍ sirve y está validado:
