@@ -206,6 +206,25 @@ saca de las tendencias buenas antes de tiempo. **Se mantiene la base sin stop**
 
 Camino a mainnet documentado en `MAINNET_CHECKLIST.md` (compuerta, sin ejecutar).
 
+### Exp I — Portfolio multi-activo: ⭐ el mejor resultado
+Repartir capital entre los 4 activos que están "long" (en vez de un solo BTC),
+SMA 20/50 diario. Período común 2020-2026:
+
+| estrategia | Sharpe | ret | maxDD |
+|---|--:|--:|--:|
+| **Portfolio trend (4 activos)** | **1.14** | +1742% | -62% |
+| Estrategia 1 activo (BTC) | 0.89 | +433% | -59% |
+| B&H BTC | 0.80 | +470% | -77% |
+
+**Mejor Sharpe de todo el proyecto (1.14)**, ~4x el retorno del single-asset, y
+drawdown muy por debajo del B&H. La diversificación entre sleeves de tendencia
+es la mejora que el trailing stop no logró. Reproducir: `run_research_portfolio.py`.
+
+**Próxima arquitectura recomendada:** versión multi-activo del bot (correr la
+señal en N activos, repartir capital entre los que están en tendencia). Es un
+cambio de scope (gestionar N posiciones/reconciliaciones) pero es el camino con
+mejor relación retorno/riesgo.
+
 ### Estado: estrategia VALIDADA
 Trend-following diario 20/50: edge real, generaliza entre activos, params
 estables. Corriendo en paper (testnet). Pendiente antes de mainnet: período de
