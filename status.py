@@ -71,12 +71,28 @@ def main():
 
     # Última línea del log de texto
     logp = os.path.join(_data_dir(), "journal.log")
+    last_log = ""
     if os.path.exists(logp):
         with open(logp, encoding="utf-8") as f:
             lines = f.read().splitlines()
         if lines:
-            print(f"\nÚltimo evento del log: {lines[-1][:100]}")
+            last_log = lines[-1][:120]
+            print(f"\nÚltimo evento del log: {last_log}")
     print("=" * 60)
+
+    # Snapshot machine-readable (para que yo lo lea de un vistazo, o un monitor)
+    perf = evaluate(j)
+    recent = [{"ts": e.ts, "type": e.type, "summary": e.summary} for e in j.query(limit=10)]
+    snapshot = {
+        "halted": killswitch.is_halted(),
+        "halt_reason": killswitch.halt_reason(),
+        "performance": perf,
+        "recent": recent,
+        "last_log": last_log,
+    }
+    out = os.path.join(_data_dir(), "status.json")
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(snapshot, f, indent=2, default=str)
 
 
 if __name__ == "__main__":
