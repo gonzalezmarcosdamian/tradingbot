@@ -274,6 +274,23 @@ def run_once(
     want_long = signal == 1
     in_position = report.state.in_position
 
+    # Guard de polvo: una posición por debajo del mínimo operable (step /
+    # min-notional) NO es vendible. Tratarla como flat para no quedar trabados
+    # intentando vender polvo, y poder tomar una posición nueva limpia.
+    if in_position:
+        filt = deps.exchange.market_filters(config.symbol)
+        step = filt.get("step_size", 0) or 0
+        qty = report.state.base_qty
+        # Polvo = lo que no se puede ni ordenar: tras el margen de venta queda
+        # por debajo del step mínimo (se redondearía a 0).
+        if step and qty * SELL_SAFETY < step:
+            deps.journal.log(EventType.INFO, f"posición polvo {qty} → tratada como flat")
+            print(f"[dust] posición {qty} bajo el mínimo operable → flat", flush=True)
+            deps.store.save_state(BotState(in_position=False, base_qty=0.0,
+                                           avg_entry_price=0.0, quote_invested=0.0,
+                                           known_orders=report.state.known_orders))
+            in_position = False
+
     # 4. Traducir señal → acción
     if want_long and not in_position:
         return _do_entry(deps, config, price, bar_id, risk_state, risk_config, today)

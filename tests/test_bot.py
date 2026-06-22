@@ -132,6 +132,17 @@ def test_senal_alza_estando_dentro_mantiene(tmp_path, monkeypatch):
     assert ex.created == []
 
 
+def test_posicion_polvo_se_trata_como_flat(tmp_path, monkeypatch):
+    # Posición por debajo del step (0.00001 < step 0.0001) → no operable → flat.
+    ex = FakeExchange(falling_rows(), base=0.00001, quote=100.0)
+    deps, store = make_deps(ex, tmp_path, monkeypatch)
+    store.save_state(BotState(in_position=True, base_qty=0.00001, avg_entry_price=150.0))
+    res = run(deps)
+    assert res.action == Action.HOLD          # polvo → flat → sin venta
+    assert store.load_state().in_position is False
+    assert ex.created == []
+
+
 def test_senal_baja_estando_fuera_mantiene(tmp_path, monkeypatch):
     ex = FakeExchange(falling_rows(), base=0.0, quote=10000.0)
     deps, _ = make_deps(ex, tmp_path, monkeypatch)
