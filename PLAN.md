@@ -198,6 +198,14 @@ históricos — el número honesto es el **Sharpe** (~1.0-1.1 vs ~0.9 del B&H).
 **Parámetro elegido para producción: (20, 50)** — gana 4/4, robusto, menos
 trades que (10,50). Es el que ya corre el bot en vivo.
 
+### Exp H — Mejoras (trailing stop): no aportan
+Probado SMA 20/50 + trailing stop (15/20/25%) en 4 activos. Baja el drawdown
+(-51% vs -65% prom) pero **sacrifica más Sharpe del que gana** (0.72 vs 0.98):
+saca de las tendencias buenas antes de tiempo. **Se mantiene la base sin stop**
+(KISS). Reproducir: `run_research_improve.py`.
+
+Camino a mainnet documentado en `MAINNET_CHECKLIST.md` (compuerta, sin ejecutar).
+
 ### Estado: estrategia VALIDADA
 Trend-following diario 20/50: edge real, generaliza entre activos, params
 estables. Corriendo en paper (testnet). Pendiente antes de mainnet: período de
