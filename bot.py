@@ -356,9 +356,13 @@ def main():
     por el guard de config.py: este entrypoint NO opera con dinero real.
 
     MODE=dca delega al Smart DCA (dca.py); por defecto corre la estrategia."""
-    if os.getenv("MODE", "strategy").lower() == "dca":
+    mode = os.getenv("MODE", "strategy").lower()
+    if mode == "dca":
         import dca
         return dca.main()
+    if mode == "portfolio":
+        import portfolio
+        return portfolio.main()
 
     from config import Config
     from exchange import build_exchange, build_public_data_client, CCXTExchange
